@@ -166,7 +166,9 @@ hdfs = ["datafusion-objectstore-hdfs"]
 integration_test = ["fs_extra", "tempdir"]
 json = ["parquet/json"]
 python = ["arrow/pyarrow"]
+s3-concurrent-write = []
 s3-native-tls = [
+    "s3-concurrent-write",
     "rusoto_core/native-tls",
     "rusoto_credential",
     "rusoto_sts/native-tls",
@@ -175,12 +177,16 @@ s3-native-tls = [
     "object_store/aws",
 ]
 s3 = [
+    "s3-concurrent-write",
     "rusoto_core/rustls",
     "rusoto_credential",
     "rusoto_sts/rustls",
     "rusoto_dynamodb/rustls",
     "dynamodb_lock/rustls",
     "object_store/aws",
+]
+s3-no-concurrent-write = [
+    "object_store/aws"
 ]
 unity-experimental = ["reqwest", "tracing", "hyper"]
 

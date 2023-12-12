@@ -3,6 +3,7 @@
 use super::utils::str_is_truthy;
 use crate::table::builder::{s3_storage_options, str_option};
 use bytes::Bytes;
+#[cfg(feature = "s3-concurrent-write")]
 use dynamodb_lock::{DynamoError, LockClient, LockItem};
 use futures::stream::BoxStream;
 use object_store::path::Path;
@@ -10,8 +11,11 @@ use object_store::{
     DynObjectStore, Error as ObjectStoreError, GetOptions, GetResult, ListResult, MultipartId,
     ObjectMeta, ObjectStore, Result as ObjectStoreResult,
 };
+#[cfg(feature = "s3-concurrent-write")]
 use rusoto_core::{HttpClient, Region};
+#[cfg(feature = "s3-concurrent-write")]
 use rusoto_credential::AutoRefreshingProvider;
+#[cfg(feature = "s3-concurrent-write")]
 use rusoto_sts::WebIdentityProvider;
 use serde::Deserialize;
 use serde::Serialize;
@@ -23,9 +27,11 @@ use std::time::Duration;
 use tokio::io::AsyncWrite;
 
 const STORE_NAME: &str = "DeltaS3ObjectStore";
+#[cfg(feature = "s3-concurrent-write")]
 const DEFAULT_MAX_RETRY_ACQUIRE_LOCK_ATTEMPTS: u32 = 1_000;
 
 /// Error raised by storage lock client
+#[cfg(feature = "s3-concurrent-write")]
 #[derive(thiserror::Error, Debug)]
 enum S3LockError {
     /// Error raised when (de)serializing data.
@@ -100,6 +106,7 @@ impl From<S3LockError> for ObjectStoreError {
 }
 
 /// Lock data which stores an attempt to rename `source` into `destination`
+#[cfg(feature = "s3-concurrent-write")]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LockData {
     /// Source object key
@@ -108,6 +115,7 @@ pub struct LockData {
     pub destination: String,
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 impl LockData {
     /// Builds new `LockData` instance and then creates json string from it.
     pub fn json(src: &str, dst: &str) -> Result<String, serde_json::Error> {
@@ -120,10 +128,12 @@ impl LockData {
 }
 
 /// Uses a `LockClient` to support additional features required by S3 Storage.
+#[cfg(feature = "s3-concurrent-write")]
 struct S3LockClient {
     lock_client: Box<dyn LockClient>,
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 impl S3LockClient {
     async fn rename_with_lock(
         &self,
@@ -227,6 +237,7 @@ impl S3LockClient {
 #[allow(missing_docs)]
 pub struct S3StorageOptions {
     pub endpoint_url: Option<String>,
+    #[cfg(feature = "s3-concurrent-write")]
     pub region: Region,
     pub profile: Option<String>,
     pub aws_access_key_id: Option<String>,
@@ -265,6 +276,7 @@ impl S3StorageOptions {
         Self::ensure_env_var(options, s3_storage_options::AWS_ROLE_SESSION_NAME);
 
         let endpoint_url = str_option(options, s3_storage_options::AWS_ENDPOINT_URL);
+        #[cfg(feature = "s3-concurrent-write")]
         let region = if let Some(endpoint_url) = endpoint_url.as_ref() {
             Region::Custom {
                 name: Self::str_or_default(
@@ -308,6 +320,7 @@ impl S3StorageOptions {
 
         Self {
             endpoint_url,
+            #[cfg(feature = "s3-concurrent-write")]
             region,
             profile,
             aws_access_key_id: str_option(options, s3_storage_options::AWS_ACCESS_KEY_ID),
@@ -330,6 +343,7 @@ impl S3StorageOptions {
         }
     }
 
+    #[allow(unused)]
     fn str_or_default(map: &HashMap<String, String>, key: &str, default: String) -> String {
         map.get(key)
             .map(|v| v.to_owned())
@@ -356,6 +370,7 @@ impl Default for S3StorageOptions {
     }
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 fn get_web_identity_provider() -> Result<AutoRefreshingProvider<WebIdentityProvider>, S3LockError> {
     let provider = WebIdentityProvider::from_k8s_env();
     Ok(AutoRefreshingProvider::new(provider)?)
@@ -366,6 +381,7 @@ fn get_web_identity_provider() -> Result<AutoRefreshingProvider<WebIdentityProvi
 /// The backend can optionally use [dynamodb_lock] to better support concurrent writers.
 pub struct S3StorageBackend {
     inner: Arc<DynObjectStore>,
+    #[cfg(feature = "s3-concurrent-write")]
     s3_lock_client: Option<S3LockClient>,
     /// Whether allowed to performance rename_if_not_exist as rename
     allow_unsafe_rename: bool,
@@ -400,15 +416,16 @@ impl S3StorageBackend {
         storage: Arc<DynObjectStore>,
         options: S3StorageOptions,
     ) -> ObjectStoreResult<Self> {
-        let s3_lock_client = try_create_lock_client(&options)?;
         Ok(Self {
             inner: storage,
-            s3_lock_client,
+            #[cfg(feature = "s3-concurrent-write")]
+            s3_lock_client: try_create_lock_client(&options)?,
             allow_unsafe_rename: options.allow_unsafe_rename,
         })
     }
 
     /// Creates a new S3StorageBackend with given options, s3 client and lock client.
+    #[cfg(feature = "s3-concurrent-write")]
     pub fn with_lock_client(
         storage: Arc<DynObjectStore>,
         lock_client: Option<Box<dyn LockClient>>,
@@ -496,9 +513,12 @@ impl ObjectStore for S3StorageBackend {
     }
 
     async fn rename_if_not_exists(&self, from: &Path, to: &Path) -> ObjectStoreResult<()> {
+        #[cfg(feature = "s3-concurrent-write")]
         if let Some(lock_client) = &self.s3_lock_client {
             lock_client.rename_with_lock(self, from, to).await?;
-        } else if self.allow_unsafe_rename {
+            return Ok(());
+        } 
+        if self.allow_unsafe_rename {
             self.inner.rename(from, to).await?;
         } else {
             return Err(S3LockError::LockClientRequired.into());
@@ -523,6 +543,7 @@ impl ObjectStore for S3StorageBackend {
     }
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 fn try_create_lock_client(options: &S3StorageOptions) -> Result<Option<S3LockClient>, S3LockError> {
     let dispatcher = HttpClient::new()?;
 
@@ -549,7 +570,7 @@ fn try_create_lock_client(options: &S3StorageOptions) -> Result<Option<S3LockCli
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "s3-concurrent-write"))]
 mod tests {
     use super::*;
 
