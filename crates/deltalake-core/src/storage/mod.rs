@@ -8,7 +8,7 @@ pub mod config;
 pub mod file;
 pub mod utils;
 
-#[cfg(any(feature = "s3", feature = "s3-native-tls"))]
+#[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write" ))]
 pub mod s3;
 
 pub use object_store::path::{Path, DELIMITER};
