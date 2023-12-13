@@ -163,7 +163,7 @@ impl StorageOptions {
     }
 
     /// Add values from the environment to storage options
-    #[cfg(any(feature = "s3", feature = "s3-native-tls"))]
+    #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
     pub fn with_env_s3(&mut self) {
         for (os_key, os_value) in std::env::vars_os() {
             if let (Some(key), Some(value)) = (os_key.to_str(), os_value.to_str()) {
@@ -197,7 +197,7 @@ impl StorageOptions {
     }
 
     /// Subset of options relevant for s3 storage
-    #[cfg(any(feature = "s3", feature = "s3-native-tls"))]
+    #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
     pub fn as_s3_options(&self) -> HashMap<AmazonS3ConfigKey, String> {
         self.0
             .iter()
