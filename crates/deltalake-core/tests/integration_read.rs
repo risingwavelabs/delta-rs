@@ -192,7 +192,11 @@ async fn read_simple_table(integration: &IntegrationContext) -> TestResult {
     let table = DeltaTableBuilder::from_uri(table_uri).with_allow_http(true).with_storage_options(hashmap! {
         dynamo_lock_options::DYNAMO_LOCK_OWNER_NAME.to_string() => "s3::deltars/simple".to_string(),
     }).load().await?;
-    #[cfg(not(any(feature = "s3", feature = "s3-native-tls")))]
+    #[cfg(not(any(
+        feature = "s3",
+        feature = "s3-native-tls",
+        feature = "s3-no-concurrent-write"
+    )))]
     let table = DeltaTableBuilder::from_uri(table_uri)
         .with_allow_http(true)
         .load()

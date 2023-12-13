@@ -17,7 +17,9 @@ use rusoto_core::{HttpClient, Region};
 use rusoto_credential::AutoRefreshingProvider;
 #[cfg(feature = "s3-concurrent-write")]
 use rusoto_sts::WebIdentityProvider;
+#[cfg(feature = "s3-concurrent-write")]
 use serde::Deserialize;
+#[cfg(feature = "s3-concurrent-write")]
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -26,6 +28,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWrite;
 
+#[cfg(feature = "s3-concurrent-write")]
 const STORE_NAME: &str = "DeltaS3ObjectStore";
 #[cfg(feature = "s3-concurrent-write")]
 const DEFAULT_MAX_RETRY_ACQUIRE_LOCK_ATTEMPTS: u32 = 1_000;
@@ -519,7 +522,7 @@ impl ObjectStore for S3StorageBackend {
         if let Some(lock_client) = &self.s3_lock_client {
             lock_client.rename_with_lock(self, from, to).await?;
             return Ok(());
-        } 
+        }
         if self.allow_unsafe_rename {
             self.inner.rename(from, to).await?;
         } else {

@@ -15,11 +15,19 @@ use crate::errors::{DeltaResult, DeltaTableError};
 use crate::logstore::default_logstore::DefaultLogStore;
 use crate::logstore::LogStoreRef;
 
-#[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
+#[cfg(any(
+    feature = "s3",
+    feature = "s3-native-tls",
+    feature = "s3-no-concurrent-write"
+))]
 use super::s3::{S3StorageBackend, S3StorageOptions};
 #[cfg(feature = "hdfs")]
 use datafusion_objectstore_hdfs::object_store::hdfs::HadoopFileSystem;
-#[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
+#[cfg(any(
+    feature = "s3",
+    feature = "s3-native-tls",
+    feature = "s3-no-concurrent-write"
+))]
 use object_store::aws::AmazonS3ConfigKey;
 #[cfg(feature = "azure")]
 use object_store::azure::AzureConfigKey;
@@ -29,7 +37,8 @@ use object_store::gcp::GoogleConfigKey;
     feature = "s3",
     feature = "s3-native-tls",
     feature = "gcs",
-    feature = "azure"
+    feature = "azure",
+    feature = "s3-no-concurrent-write"
 ))]
 use std::str::FromStr;
 
@@ -163,7 +172,11 @@ impl StorageOptions {
     }
 
     /// Add values from the environment to storage options
-    #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
+    #[cfg(any(
+        feature = "s3",
+        feature = "s3-native-tls",
+        feature = "s3-no-concurrent-write"
+    ))]
     pub fn with_env_s3(&mut self) {
         for (os_key, os_value) in std::env::vars_os() {
             if let (Some(key), Some(value)) = (os_key.to_str(), os_value.to_str()) {
@@ -197,7 +210,11 @@ impl StorageOptions {
     }
 
     /// Subset of options relevant for s3 storage
-    #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
+    #[cfg(any(
+        feature = "s3",
+        feature = "s3-native-tls",
+        feature = "s3-no-concurrent-write"
+    ))]
     pub fn as_s3_options(&self) -> HashMap<AmazonS3ConfigKey, String> {
         self.0
             .iter()
@@ -251,7 +268,11 @@ pub fn configure_store(
             Ok(Arc::new(FileStorageBackend::try_new(path)?))
         }
         ObjectStoreScheme::Memory => url_prefix_handler(InMemory::new(), Path::parse(url.path())?),
-        #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
+        #[cfg(any(
+            feature = "s3",
+            feature = "s3-native-tls",
+            feature = "s3-no-concurrent-write"
+        ))]
         ObjectStoreScheme::AmazonS3 => {
             options.with_env_s3();
             let (store, prefix) = parse_url_opts(url, options.as_s3_options())?;
