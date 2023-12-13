@@ -15,11 +15,11 @@ use crate::errors::{DeltaResult, DeltaTableError};
 use crate::logstore::default_logstore::DefaultLogStore;
 use crate::logstore::LogStoreRef;
 
-#[cfg(any(feature = "s3", feature = "s3-native-tls"))]
+#[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
 use super::s3::{S3StorageBackend, S3StorageOptions};
 #[cfg(feature = "hdfs")]
 use datafusion_objectstore_hdfs::object_store::hdfs::HadoopFileSystem;
-#[cfg(any(feature = "s3", feature = "s3-native-tls"))]
+#[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
 use object_store::aws::AmazonS3ConfigKey;
 #[cfg(feature = "azure")]
 use object_store::azure::AzureConfigKey;
