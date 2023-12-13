@@ -251,7 +251,7 @@ pub fn configure_store(
             Ok(Arc::new(FileStorageBackend::try_new(path)?))
         }
         ObjectStoreScheme::Memory => url_prefix_handler(InMemory::new(), Path::parse(url.path())?),
-        #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-concurrent-write"))]
+        #[cfg(any(feature = "s3", feature = "s3-native-tls", feature = "s3-no-concurrent-write"))]
         ObjectStoreScheme::AmazonS3 => {
             options.with_env_s3();
             let (store, prefix) = parse_url_opts(url, options.as_s3_options())?;
