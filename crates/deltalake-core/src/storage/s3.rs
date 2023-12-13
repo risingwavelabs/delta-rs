@@ -96,6 +96,7 @@ enum S3LockError {
     LockClientRequired,
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 impl From<S3LockError> for ObjectStoreError {
     fn from(e: S3LockError) -> Self {
         ObjectStoreError::Generic {
@@ -438,6 +439,7 @@ impl S3StorageBackend {
         }
     }
 
+    #[cfg(feature = "s3-concurrent-write")]
     pub(self) async fn rename_no_replace(&self, from: &Path, to: &Path) -> ObjectStoreResult<()> {
         match self.head(to).await {
             Ok(_) => {
@@ -521,7 +523,10 @@ impl ObjectStore for S3StorageBackend {
         if self.allow_unsafe_rename {
             self.inner.rename(from, to).await?;
         } else {
+            #[cfg(feature = "s3-concurrent-write")]
             return Err(S3LockError::LockClientRequired.into());
+            #[cfg(not(feature = "s3-concurrent-write"))]
+            return Err(ObjectStoreError::NotImplemented);
         }
 
         Ok(())
