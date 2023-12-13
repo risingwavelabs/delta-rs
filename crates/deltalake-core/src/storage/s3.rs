@@ -17,7 +17,9 @@ use rusoto_core::{HttpClient, Region};
 use rusoto_credential::AutoRefreshingProvider;
 #[cfg(feature = "s3-concurrent-write")]
 use rusoto_sts::WebIdentityProvider;
+#[cfg(feature = "s3-concurrent-write")]
 use serde::Deserialize;
+#[cfg(feature = "s3-concurrent-write")]
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -26,6 +28,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWrite;
 
+#[cfg(feature = "s3-concurrent-write")]
 const STORE_NAME: &str = "DeltaS3ObjectStore";
 #[cfg(feature = "s3-concurrent-write")]
 const DEFAULT_MAX_RETRY_ACQUIRE_LOCK_ATTEMPTS: u32 = 1_000;
@@ -96,6 +99,7 @@ enum S3LockError {
     LockClientRequired,
 }
 
+#[cfg(feature = "s3-concurrent-write")]
 impl From<S3LockError> for ObjectStoreError {
     fn from(e: S3LockError) -> Self {
         ObjectStoreError::Generic {
@@ -438,6 +442,7 @@ impl S3StorageBackend {
         }
     }
 
+    #[cfg(feature = "s3-concurrent-write")]
     pub(self) async fn rename_no_replace(&self, from: &Path, to: &Path) -> ObjectStoreResult<()> {
         match self.head(to).await {
             Ok(_) => {
@@ -517,11 +522,14 @@ impl ObjectStore for S3StorageBackend {
         if let Some(lock_client) = &self.s3_lock_client {
             lock_client.rename_with_lock(self, from, to).await?;
             return Ok(());
-        } 
+        }
         if self.allow_unsafe_rename {
             self.inner.rename(from, to).await?;
         } else {
+            #[cfg(feature = "s3-concurrent-write")]
             return Err(S3LockError::LockClientRequired.into());
+            #[cfg(not(feature = "s3-concurrent-write"))]
+            return Err(ObjectStoreError::NotImplemented);
         }
 
         Ok(())

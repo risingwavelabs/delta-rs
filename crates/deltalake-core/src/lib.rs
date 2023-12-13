@@ -77,7 +77,11 @@ compile_error!(
     "Features parquet and parquet2 are mutually exclusive and cannot be enabled together"
 );
 
-#[cfg(all(feature = "s3", feature = "s3-native-tls"))]
+#[cfg(any(
+    all(feature = "s3", feature = "s3-native-tls"),
+    all(feature = "s3-no-concurrent-write", feature = "s3"),
+    all(feature = "s3-no-concurrent-write", feature = "s3-native-tls")
+))]
 compile_error!(
     "Features s3 and s3-native-tls are mutually exclusive and cannot be enabled together"
 );
